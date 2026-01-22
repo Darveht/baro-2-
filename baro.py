@@ -17,6 +17,7 @@ import requests
 import io
 import feedparser
 from pydub import AudioSegment
+import pytz
 
 # Configurar ffmpeg automáticamente
 ffmpeg_path = which('ffmpeg')
@@ -41,22 +42,145 @@ class NLPProcessor:
     """Procesador de lenguaje natural avanzado"""
     
     def __init__(self):
-        # Sinónimos y variaciones de comandos
+        # Sinónimos y variaciones EXPANDIDAS de comandos
         self.synonyms = {
-            'hora': ['hora', 'qué hora es', 'me dices la hora', 'dime la hora', 'hora actual', 'tiempo'],
-            'fecha': ['fecha', 'qué día es', 'día de hoy', 'fecha actual', 'qué fecha', 'calendario'],
-            'clima': ['clima', 'tiempo', 'temperatura', 'pronóstico', 'hace calor', 'hace frío', 'llueve', 'cómo está el clima', 'qué temperatura'],
-            'buscar': ['busca', 'buscar', 'búscame', 'encuentra', 'google', 'investiga', 'consulta', 'mira en internet'],
-            'youtube': ['youtube', 'reproduce', 'pon música', 'video', 'canción', 'música'],
-            'noticias': ['noticias', 'últimas noticias', 'qué pasó', 'actualidad', 'informativo', 'novedades'],
-            'chiste': ['chiste', 'broma', 'hazme reír', 'cuéntame un chiste', 'dime algo gracioso', 'algo divertido'],
-            'calculadora': ['calculadora', 'calcula', 'cuánto es', 'opera', 'haz la cuenta', 'resultado de', 'suma', 'resta', 'multiplica', 'divide'],
-            'ubicación': ['dónde queda', 'dónde está', 'ubicación', 'dirección', 'localización', 'cómo llegar'],
-            'saludo': ['hola', 'buenos días', 'buenas tardes', 'buenas noches', 'hey', 'qué tal', 'saludos', 'qué onda'],
-            'despedida': ['adiós', 'hasta luego', 'chau', 'nos vemos', 'me voy', 'hasta pronto', 'bye'],
-            'identidad': ['quién eres', 'preséntate', 'tu nombre', 'qué eres', 'cómo te llamas', 'quién eres tú'],
-            'aprender': ['aprende', 'recuerda', 'guarda', 'memoriza', 'anota'],
-            'traducir': ['traduce', 'tradúceme', 'cómo se dice', 'dime en', 'traducción']
+            'hora': [
+                'hora', 'qué hora es', 'que hora es', 'me dices la hora', 'dime la hora', 
+                'hora actual', 'cuál es la hora', 'cual es la hora', 'decime la hora', 
+                'me das la hora', 'dame la hora', 'dígame la hora', 'digame la hora',
+                'qué hora es', 'que hora tenemos', 'qué hora tenemos', 'cuántas horas',
+                'me dices qué hora es', 'me dices que hora es', 'es hora', 'la hora',
+                'hora de ahora', 'hora exacta', 'la hora exacta', 'hora precisa',
+                'avísame la hora', 'avisame la hora', 'marca la hora', 'di la hora'
+            ],
+            'fecha': [
+                'fecha', 'qué día es', 'que dia es', 'día de hoy', 'dia de hoy', 
+                'fecha actual', 'qué fecha', 'que fecha', 'calendario', 'hoy es',
+                'qué día', 'que dia', 'cuál es la fecha', 'cual es la fecha',
+                'dime la fecha', 'dame la fecha', 'la fecha de hoy', 'fecha de hoy',
+                'hoy qué día es', 'hoy que dia es', 'día actual', 'dia actual',
+                'fecha exacta', 'cuándo es hoy', 'cuando es hoy', 'mes y día',
+                'me dices qué día es', 'me dices que dia es', 'avísame qué día',
+                'avisame que dia', 'marca la fecha', 'di qué día', 'di que dia'
+            ],
+            'clima': [
+                'clima', 'tiempo', 'temperatura', 'pronóstico', 'pronostico', 
+                'hace calor', 'hace frío', 'hace frio', 'llueve', 'lluvia', 
+                'cómo está el clima', 'como esta el clima', 'qué temperatura', 'que temperatura',
+                'cómo está el tiempo', 'como esta el tiempo', 'qué tiempo hace', 'que tiempo hace',
+                'el clima', 'el tiempo', 'estado del tiempo', 'estado del clima',
+                'anubiado', 'nublado', 'soleado', 'despejado', 'tormenta', 
+                'humedad', 'viento', 'presión', 'condiciones meteorológicas',
+                'dime el clima', 'dame el clima', 'cuál es el clima', 'cual es el clima',
+                'clima de', 'tiempo en', 'temperatura actual', 'cómo está'
+            ],
+            'buscar': [
+                'busca', 'buscar', 'búscame', 'buscame', 'encuentra', 'google', 
+                'investiga', 'investigame', 'consulta', 'consulta en', 'mira en internet',
+                'busca en google', 'búsqueda', 'busqueda', 'quiero saber de', 'averigua',
+                'ayúdame a buscar', 'ayudame a buscar', 'busca por favor', 'abre google',
+                'haz una búsqueda', 'haz una busqueda', 'en google', 'en internet',
+                'quiero información', 'quiero informacion', 'necesito información de'
+            ],
+            'youtube': [
+                'youtube', 'reproduce', 'pon música', 'pon musica', 'video', 'vídeo',
+                'canción', 'cancion', 'música', 'musica', 'reproducir',
+                'abre youtube', 'youtube de', 'busca en youtube', 'pon en youtube',
+                'toca', 'toca musica', 'dame una canción', 'dame una cancion',
+                'play', 'escucha', 'escucha musica', 'pon este video', 'pon este vídeo',
+                'canción de', 'musica de', 'quiero escuchar', 'buscar video',
+                'buscar vídeo', 'video de', 'artista', 'cantante'
+            ],
+            'noticias': [
+                'noticias', 'últimas noticias', 'ultimas noticias', 'qué pasó', 'que paso',
+                'actualidad', 'informativo', 'novedades', 'novedad', 'sucede',
+                'qué está pasando', 'que esta pasando', 'últimas noticia', 'noticias de hoy',
+                'news', 'dime noticias', 'dame noticias', 'avísame noticias', 'avisame noticias',
+                'pasa en el mundo', 'sucede en el mundo', 'mundo', 'actualidades',
+                'noticia de', 'cuéntame qué', 'cuentame que', 'boletín', 'boletin'
+            ],
+            'chiste': [
+                'chiste', 'chistes', 'broma', 'bromas', 'hazme reír', 'hazme reir',
+                'cuéntame un chiste', 'cuentame un chiste', 'dime algo gracioso',
+                'algo divertido', 'gracioso', 'reír', 'reir', 'risa', 'lol',
+                'cuéntame una broma', 'cuentame una broma', 'dime un chiste',
+                'quiero reír', 'quiero reir', 'hazme gracia', 'cuenta un chiste',
+                'dame un chiste', 'avísame un chiste', 'avisame un chiste'
+            ],
+            'calculadora': [
+                'calculadora', 'calcula', 'cuánto es', 'cuanto es', 'opera', 'haz la cuenta',
+                'resultado de', 'suma', 'resta', 'multiplica', 'divide', 'divida',
+                'operación', 'operacion', 'dime cuánto', 'dime cuanto', 'cuál es el resultado',
+                'cual es el resultado', 'calcula por favor', 'cuánto', 'cuanto',
+                'matemáticas', 'matematicas', 'operación de', 'operacion de',
+                'cuántas veces', 'cuantas veces', 'cálculo', 'calculo', 'cálculos', 'calculos',
+                'más', 'menos', 'por', 'entre', 'elevado', 'potencia', 'raíz', 'raiz',
+                'cuánto da', 'cuanto da', 'cuánto me da', 'cuanto me da',
+                'qué sale', 'que sale', 'multiplicar', 'sumar', 'restar', 'dividir',
+                'raíz cuadrada', 'raiz cuadrada', 'número elevado', 'numero elevado',
+                'a la potencia', 'al cuadrado', 'al cubo', 'a la dos', 'a la tres',
+                'calcula esto', 'cuál es', 'cual es', 'operación matemática',
+                'cuánto es esto', 'cuanto es esto', 'resuelve', 'haz el cálculo',
+                'haz el calculo', 'cuánto es la suma', 'cuanto es la suma',
+                'cuánto es la resta', 'cuanto es la resta', 'cuenta matemática',
+                'cuenta matematica', 'operador matemático', 'operador matematico'
+            ],
+            'ubicación': [
+                'dónde queda', 'donde queda', 'dónde está', 'donde esta', 'ubicación', 'ubicacion',
+                'dirección', 'direccion', 'localización', 'localizacion', 'cómo llegar',
+                'como llegar', 'mapa de', 'dónde se encuentra', 'donde se encuentra',
+                'dónde ubicar', 'donde ubicar', 'lugar de', 'está ubicado', 'esta ubicado',
+                'lugar', 'sitio', 'zona', 'barrio', 'país', 'pais', 'ciudad de',
+                'dígame dónde', 'digame donde', 'quiero ir a', 'ruta a'
+            ],
+            'saludo': [
+                'hola', 'buenos días', 'buenos dias', 'buenas tardes', 'buenas noches',
+                'hey', 'qué tal', 'que tal', 'saludos', 'qué onda', 'que onda',
+                'dígame hola', 'digame hola', 'hola baro', 'hola varo', 'bon día',
+                'hola varo', 'hola baro', 'cómo estás', 'como estas', 'qué hay',
+                'que hay', 'salud', 'ey', 'buenos', 'buenas', 'un saludo', 'saludame'
+            ],
+            'despedida': [
+                'adiós', 'adios', 'hasta luego', 'chau', 'nos vemos', 'me voy',
+                'hasta pronto', 'bye', 'ciao', 'ciiao', 'vuelvo después', 'gracias adiós',
+                'gracias adios', 'hasta', 'hasta siempre', 'hasta la vista', 'nos vemos luego',
+                'me tengo que ir', 'me voy ahora', 'fue un placer', 'que descanses',
+                'buenas noches', 'qué descanses', 'que descanses', 'arriba'
+            ],
+            'identidad': [
+                'quién eres', 'quien eres', 'preséntate', 'presentate', 'tu nombre',
+                'qué eres', 'que eres', 'cómo te llamas', 'como te llamas', 'quién eres tú',
+                'quien eres tu', 'cuál es tu nombre', 'cual es tu nombre', 'dime quién eres',
+                'dime quien eres', 'cuéntame quién eres', 'cuentame quien eres',
+                'qué es baro', 'que es baro', 'quién eres varo', 'quien eres varo',
+                'explícate', 'explicate', 'presentación', 'presentacion', 'información de ti',
+                'informacion de ti', 'capacidades', 'cómo fuiste hecho', 'como fuiste hecho',
+                'cómo fuiste creado', 'como fuiste creado', 'quién te creó', 'quien te creo',
+                'quién te hizo', 'quien te hizo', 'dónde vienes', 'de donde eres', 'tu origen',
+                'dime sobre ti', 'cuéntame sobre ti', 'cuentame sobre ti', 'habla de ti',
+                'tú quién eres', 'tu quien eres', 'tu identidad', 'cuál es tu identidad'
+            ],
+            'aprender': [
+                'aprende', 'recuerda', 'guarda', 'memoriza', 'anota',
+                'recuerdo', 'aprendí', 'aprendi', 'nueva información', 'nueva informacion',
+                'enseña', 'te enseño', 'te voy a enseñar', 'te voy a ensenar',
+                'va a recordar', 'voy a guardar', 'guarda esto', 'memoriza esto',
+                'apunta esto', 'toma nota', 'importante', 'acuérdate', 'acordate',
+                'te enseño esto', 'va a aprender'
+            ],
+            'traducir': [
+                'traduce', 'tradúceme', 'traduceme', 'cómo se dice', 'como se dice',
+                'dime en', 'traducción', 'traduccion', 'al inglés', 'al ingles',
+                'al español', 'al espanol', 'al francés', 'al frances', 'en otro idioma',
+                'idioma', 'idiomas', 'traducir a', 'traducción de', 'traduccion de',
+                'en otro idioma', 'palabra en', 'cómo digo', 'como digo',
+                'en japonés', 'en japones', 'en italiano', 'en alemán', 'en aleman',
+                'en portugués', 'en portugues', 'en chino', 'en ruso', 'en árabe', 'en arabe',
+                'en coreano', 'en tailandés', 'en tailandes', 'en vietnamita',
+                'qué significa', 'que significa', 'cómo se traduce', 'como se traduce',
+                'en holandés', 'en holandes', 'en sueco', 'en noruego', 'en danés', 'en danes',
+                'en griego', 'en turco', 'en hindi', 'en bengalí', 'en bengali'
+            ]
         }
         
         # Palabras de pregunta para mejor detección
@@ -96,16 +220,58 @@ class NLPProcessor:
         return SequenceMatcher(None, a, b).ratio()
     
     def detect_intent(self, command):
-        """Detecta la intención del comando usando NLP mejorado"""
+        """Detecta la intención del comando usando NLP mejorado y robusto"""
         command_norm = self.normalize_text(command)
         
-        # PRIORIDAD 1: Detección exacta de palabras clave críticas
-        if any(word in command_norm for word in ['qué hora', 'que hora', 'hora', 'hora actual', 'hora es', 'me dices la hora']):
-            return 'hora', 0.95
-        if any(word in command_norm for word in ['fecha', 'qué día', 'que dia', 'día de hoy', 'dia de hoy']):
-            return 'fecha', 0.95
-        if any(word in command_norm for word in ['dónde estoy', 'donde estoy', 'mi ubicación', 'mi ubicacion', 'mi localización']):
-            return 'ubicación', 0.95
+        # PRIORIDAD 1: Detección exacta de palabras clave críticas (HORA)
+        # Excluir búsquedas que tengan 'en' (hora en lugar específico)
+        hora_patterns = [
+            'qué hora', 'que hora', 'cual es la hora', 'cuál es la hora',
+            'hora actual', 'me dices la hora', 'dime la hora',
+            'dame la hora', 'me das la hora', 'decime la hora', 'avísame la hora',
+            'avisame la hora', 'marca la hora', 'di la hora', 'hora de ahora',
+            'hora exacta', 'hora precisa', 'la hora exacta'
+        ]
+        if any(pattern in command_norm for pattern in hora_patterns):
+            # Si tiene "en [ciudad]" es búsqueda de hora en lugar específico
+            if ' en ' in command_norm and not command_norm.endswith('en'):
+                return 'hora', 0.95
+            # Si NO contiene palabras de búsqueda, es hora local
+            elif 'wikipedia' not in command_norm and 'busca' not in command_norm:
+                return 'hora', 0.99
+        
+        # PRIORIDAD 1: Detección exacta de palabras clave críticas (FECHA)
+        fecha_patterns = [
+            'qué día', 'que dia', 'cuál es la fecha', 'cual es la fecha',
+            'fecha actual', 'día de hoy', 'dia de hoy', 'hoy es', 'qué fecha',
+            'que fecha', 'dime la fecha', 'dame la fecha', 'la fecha de hoy',
+            'fecha de hoy', 'día actual', 'dia actual', 'fecha exacta',
+            'cuándo es hoy', 'cuando es hoy', 'mes y día', 'mes y dia'
+        ]
+        if any(pattern in command_norm for pattern in fecha_patterns):
+            return 'fecha', 0.98
+        
+        # PRIORIDAD 1: Ubicación del usuario
+        ubicacion_usuario = [
+            'dónde estoy', 'donde estoy', 'mi ubicación', 'mi ubicacion',
+            'mi localización', 'mi localizacion', 'donde me encuentro', 'donde estoy',
+            'dónde me encuentro', 'mi posición', 'ubicacion actual', 'ubicación actual'
+        ]
+        if any(pattern in command_norm for pattern in ubicacion_usuario):
+            return 'ubicación', 0.98
+        
+        # PRIORIDAD 1: Identidad - Preguntas sobre quién eres/creación
+        identidad_patterns = [
+            'quién eres', 'quien eres',
+            'qué eres', 'que eres', 'cómo fuiste hecho', 'como fuiste hecho',
+            'cómo fuiste creado', 'como fuiste creado', 'quién te creó', 'quien te creo',
+            'quién te hizo', 'quien te hizo', 'tu nombre', 'preséntate', 'presentate'
+        ]
+        if any(pattern in command_norm for pattern in identidad_patterns):
+            # Excluir búsquedas "quién es [persona]" que van a Wikipedia
+            if 'quién es ' not in command_norm and 'quien es ' not in command_norm:
+                if 'wikipedia' not in command_norm and 'busca' not in command_norm:
+                    return 'identidad', 0.99
         
         # PRIORIDAD 2: Buscar coincidencias exactas o similares en sinónimos
         best_match = None
@@ -113,15 +279,19 @@ class NLPProcessor:
         
         for intent, variations in self.synonyms.items():
             for variation in variations:
+                # Búsqueda exacta
                 if variation in command_norm:
-                    score = len(variation) / len(command_norm)
+                    # Puntaje basado en longitud y posición
+                    score = 0.9 - (0.1 * (len(command_norm) - len(variation)) / len(command_norm))
+                    score = max(score, 0.5)
+                    
                     if score > best_score:
                         best_score = score
                         best_match = intent
                 
-                # Similitud de texto
+                # Búsqueda por similitud
                 sim = self.similarity(command_norm, variation)
-                if sim > 0.8 and sim > best_score:
+                if sim > 0.75 and sim > best_score:
                     best_score = sim
                     best_match = intent
         
@@ -131,15 +301,26 @@ class NLPProcessor:
         """Extrae la consulta principal del comando"""
         command_norm = self.normalize_text(command)
         
-        # Eliminar palabras de activación y de intención
-        stop_words = ['baro', 'varo', 'por favor', 'porfavor', 'gracias']
+        # Palabras a eliminar: activación, de relleno y de intención
+        stop_words = [
+            'baro', 'varo', 'por favor', 'porfavor', 'gracias',
+            'como', 'cómo', 'está', 'esta', 'el', 'la', 'de', 'en',
+            'qué', 'que', 'me', 'dime', 'dame', 'ayúdame', 'ayudame'
+        ]
         if intent and intent in self.synonyms:
             stop_words.extend(self.synonyms[intent])
         
         words = command_norm.split()
-        filtered_words = [w for w in words if w not in stop_words]
+        filtered_words = [w for w in words if w not in stop_words and len(w) > 2]
         
-        return ' '.join(filtered_words).strip()
+        # Asegurar que solo quedemos con palabras significativas
+        result = ' '.join(filtered_words).strip()
+        
+        # Si el resultado está vacío o es muy corto, devolver vacío
+        if not result or len(result) < 2:
+            return ""
+        
+        return result
     
     def detect_question_type(self, command):
         """Detecta el tipo de pregunta y extrae el tema"""
@@ -433,10 +614,13 @@ def search_wikipedia(query):
         return "Hubo un error al buscar en Wikipedia. Intenta de nuevo."
 
 def get_weather(location="La Habana"):
-    """Obtener clima con mejor formato"""
+    """Obtener clima con mejor formato y respuesta natural"""
     try:
-        location_clean = location.replace(' ', '+')
-        url = f"http://wttr.in/{location_clean}?format=j1"
+        # Limpiar la ubicación
+        location_clean = location.strip().title()
+        location_url = location_clean.replace(' ', '+')
+        
+        url = f"http://wttr.in/{location_url}?format=j1"
         response = requests.get(url, timeout=10)
         
         if response.status_code == 200:
@@ -465,9 +649,16 @@ def get_weather(location="La Habana"):
             
             condition_es = translations.get(condition, condition.lower())
             
-            return f"El clima en {location.title()}: {temp_c}°C (sensación térmica {feels_like}°C), {condition_es}, humedad {humidity}%."
+            # Respuesta más natural y formateada con pausas
+            respuestas = [
+                f"El clima en {location_clean} es: {temp_c} grados. Con {condition_es}. La sensación térmica es de {feels_like} grados y la humedad está en {humidity} por ciento.",
+                f"En {location_clean}, actualmente hace {temp_c} grados. Está {condition_es}. Se siente como {feels_like} grados. La humedad del aire es del {humidity} por ciento.",
+                f"Tengo información del tiempo en {location_clean}. La temperatura es de {temp_c} grados, con {condition_es}. Sensación térmica: {feels_like} grados. Humedad: {humidity} por ciento.",
+                f"El pronóstico en {location_clean}: {temp_c} grados centígrados, {condition_es}. Sensación térmica de {feels_like} grados. Con una humedad de {humidity} por ciento en el ambiente.",
+            ]
+            return random.choice(respuestas)
         else:
-            return f"No pude obtener el clima de '{location}'. Verifica el nombre de la ciudad."
+            return f"No pude obtener el clima de '{location}'. Verifica que el nombre de la ciudad sea correcto."
     except Exception as e:
         print(f"Error clima: {e}")
         return "No pude conectarme al servicio de clima. Revisa tu conexión a internet."
@@ -528,7 +719,392 @@ def learn_new(topic, info):
     conn.close()
     return f"¡Perfecto! Aprendí sobre '{topic}'. Ahora puedes preguntarme sobre esto cuando quieras."
 
-def get_user_location():
+def translate_text(text, target_language):
+    """Traducir texto a otros idiomas usando Google Translate API"""
+    try:
+        # Mapeo de idiomas en español a códigos de idioma
+        language_map = {
+            'ingles': 'en',
+            'english': 'en',
+            'en': 'en',
+            'frances': 'fr',
+            'francés': 'fr',
+            'french': 'fr',
+            'fr': 'fr',
+            'aleman': 'de',
+            'alemán': 'de',
+            'deutsch': 'de',
+            'german': 'de',
+            'de': 'de',
+            'portugues': 'pt',
+            'portugués': 'pt',
+            'portuguese': 'pt',
+            'pt': 'pt',
+            'italiano': 'it',
+            'italian': 'it',
+            'it': 'it',
+            'chino': 'zh',
+            'chino simplificado': 'zh-CN',
+            'chino tradicional': 'zh-TW',
+            'chinese': 'zh',
+            'zh': 'zh',
+            'japones': 'ja',
+            'japonés': 'ja',
+            'japanese': 'ja',
+            'ja': 'ja',
+            'ruso': 'ru',
+            'russian': 'ru',
+            'ru': 'ru',
+            'arabe': 'ar',
+            'árabe': 'ar',
+            'arabic': 'ar',
+            'ar': 'ar',
+            'coreano': 'ko',
+            'korean': 'ko',
+            'ko': 'ko',
+            'tailandes': 'th',
+            'tailandés': 'th',
+            'thai': 'th',
+            'th': 'th',
+            'vietnamita': 'vi',
+            'vietnamese': 'vi',
+            'vi': 'vi',
+            'holandes': 'nl',
+            'holandés': 'nl',
+            'dutch': 'nl',
+            'nl': 'nl',
+            'sueco': 'sv',
+            'swedish': 'sv',
+            'sv': 'sv',
+            'noruego': 'no',
+            'norwegian': 'no',
+            'no': 'no',
+            'danes': 'da',
+            'danés': 'da',
+            'danish': 'da',
+            'da': 'da',
+            'griego': 'el',
+            'greek': 'el',
+            'el': 'el',
+            'turco': 'tr',
+            'turkish': 'tr',
+            'tr': 'tr',
+            'hindi': 'hi',
+            'hi': 'hi',
+            'bengali': 'bn',
+            'bn': 'bn',
+            'polaco': 'pl',
+            'polish': 'pl',
+            'pl': 'pl',
+            'rumano': 'ro',
+            'romanian': 'ro',
+            'ro': 'ro',
+            'ucraniano': 'uk',
+            'ukrainian': 'uk',
+            'uk': 'uk',
+            'hebreo': 'he',
+            'hebrew': 'he',
+            'he': 'he',
+            'finlandés': 'fi',
+            'finnish': 'fi',
+            'fi': 'fi',
+            'islandés': 'is',
+            'icelandic': 'is',
+            'is': 'is',
+            'sueco': 'sv',
+            'checoslovaco': 'cs',
+            'czech': 'cs',
+            'cs': 'cs',
+        }
+        
+        # Normalizar el idioma de destino
+        target_lang = target_language.lower().strip()
+        lang_code = language_map.get(target_lang, target_lang)
+        
+        # Si no se encuentra el idioma, devolver error
+        if len(lang_code) < 2:
+            respuestas_error = [
+                f"No reconozco el idioma '{target_language}'. Intenta con idiomas como inglés, francés, alemán, italiano, japonés, chino, portugués, ruso, árabe, coreano, etc.",
+                f"Ese idioma no está disponible. Puedo traducir a: inglés, francés, alemán, italiano, japonés, chino, portugués, ruso, árabe, y otros idiomas principales.",
+                f"No tengo soporte para traducir a '{target_language}'. Dime otro idioma como inglés, francés, alemán o italiano.",
+            ]
+            return random.choice(respuestas_error), None
+        
+        # Usar Google Translate API (URL pública sin API key)
+        url = "https://translate.googleapis.com/translate_a/element.js?cb=googleTranslateElementInit"
+        
+        # Alternativa: usar servicio de Google Translate sin API key
+        try:
+            # Intentar con mymemorytranslator.com (API gratuita)
+            from urllib.parse import quote
+            api_url = f"https://api.mymemory.translated.net/get?q={quote(text)}&langpair=es|{lang_code}"
+            
+            response = requests.get(api_url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data['responseStatus'] == 200:
+                    translated = data['responseData']['translatedText']
+                    
+                    # Nombres de idiomas en español
+                    lang_names = {
+                        'en': 'inglés',
+                        'fr': 'francés',
+                        'de': 'alemán',
+                        'it': 'italiano',
+                        'pt': 'portugués',
+                        'zh': 'chino',
+                        'ja': 'japonés',
+                        'ru': 'ruso',
+                        'ar': 'árabe',
+                        'ko': 'coreano',
+                        'th': 'tailandés',
+                        'vi': 'vietnamita',
+                        'nl': 'holandés',
+                        'sv': 'sueco',
+                        'no': 'noruego',
+                        'da': 'danés',
+                        'el': 'griego',
+                        'tr': 'turco',
+                        'hi': 'hindi',
+                        'bn': 'bengalí',
+                        'pl': 'polaco',
+                        'ro': 'rumano',
+                        'uk': 'ucraniano',
+                        'he': 'hebreo',
+                        'fi': 'finlandés',
+                        'is': 'islandés',
+                        'cs': 'checo',
+                    }
+                    
+                    lang_display = lang_names.get(lang_code, target_language)
+                    
+                    respuestas_exito = [
+                        f"'{text}' en {lang_display} se dice: '{translated}'",
+                        f"La traducción al {lang_display} es: '{translated}'",
+                        f"'{text}' se traduce al {lang_display} como: '{translated}'",
+                        f"En {lang_display}, '{text}' es: '{translated}'",
+                        f"Así se dice en {lang_display}: '{translated}'",
+                    ]
+                    
+                    return random.choice(respuestas_exito), translated
+                else:
+                    return "No pude traducir ese texto. Intenta con otra frase.", None
+            else:
+                return "Error al conectar con el servicio de traducción.", None
+                
+        except Exception as e:
+            print(f"Error en traducción: {e}")
+            return "Error en el servicio de traducción. Intenta de nuevo más tarde.", None
+            
+    except Exception as e:
+        print(f"Error general traducción: {e}")
+        return "Error al procesar la traducción.", None
+
+def get_time_in_city(city_name):
+    """Obtener la hora en una ciudad específica"""
+    import pytz
+    from datetime import datetime
+    
+    # Mapeo de ciudades a zonas horarias
+    city_timezones = {
+        'houston': 'America/Chicago',
+        'nueva york': 'America/New_York',
+        'nueva york': 'America/New_York',
+        'newyork': 'America/New_York',
+        'los ángeles': 'America/Los_Angeles',
+        'los angeles': 'America/Los_Angeles',
+        'la': 'America/Los_Angeles',
+        'chicago': 'America/Chicago',
+        'denver': 'America/Denver',
+        'phoenix': 'America/Phoenix',
+        'tucson': 'America/Phoenix',
+        'seattle': 'America/Los_Angeles',
+        'san francisco': 'America/Los_Angeles',
+        'dallas': 'America/Chicago',
+        'miami': 'America/New_York',
+        'washington': 'America/New_York',
+        'boston': 'America/New_York',
+        'filadelfia': 'America/New_York',
+        'philadelphia': 'America/New_York',
+        'toronto': 'America/Toronto',
+        'vancouver': 'America/Vancouver',
+        'ciudad de méxico': 'America/Mexico_City',
+        'ciudad de mexico': 'America/Mexico_City',
+        'méxico': 'America/Mexico_City',
+        'mexico': 'America/Mexico_City',
+        'buenos aires': 'America/Argentina/Buenos_Aires',
+        'rio de janeiro': 'America/Sao_Paulo',
+        'brasil': 'America/Sao_Paulo',
+        'sao paulo': 'America/Sao_Paulo',
+        'sp': 'America/Sao_Paulo',
+        'chile': 'America/Santiago',
+        'santiago': 'America/Santiago',
+        'lima': 'America/Lima',
+        'perú': 'America/Lima',
+        'peru': 'America/Lima',
+        'bogotá': 'America/Bogota',
+        'bogota': 'America/Bogota',
+        'colombia': 'America/Bogota',
+        'caracas': 'America/Caracas',
+        'venezuela': 'America/Caracas',
+        'havana': 'America/Havana',
+        'la habana': 'America/Havana',
+        'cuba': 'America/Havana',
+        'madrid': 'Europe/Madrid',
+        'españa': 'Europe/Madrid',
+        'españa': 'Europe/Madrid',
+        'barcelona': 'Europe/Madrid',
+        'sevilla': 'Europe/Madrid',
+        'bilbao': 'Europe/Madrid',
+        'valencia': 'Europe/Madrid',
+        'parís': 'Europe/Paris',
+        'paris': 'Europe/Paris',
+        'lyon': 'Europe/Paris',
+        'francia': 'Europe/Paris',
+        'londres': 'Europe/London',
+        'london': 'Europe/London',
+        'reino unido': 'Europe/London',
+        'berlín': 'Europe/Berlin',
+        'berlin': 'Europe/Berlin',
+        'munich': 'Europe/Berlin',
+        'alemania': 'Europe/Berlin',
+        'ámsterdam': 'Europe/Amsterdam',
+        'amsterdam': 'Europe/Amsterdam',
+        'holanda': 'Europe/Amsterdam',
+        'bruselas': 'Europe/Brussels',
+        'bélgica': 'Europe/Brussels',
+        'belgica': 'Europe/Brussels',
+        'zurich': 'Europe/Zurich',
+        'suiza': 'Europe/Zurich',
+        'viena': 'Europe/Vienna',
+        'austria': 'Europe/Vienna',
+        'praga': 'Europe/Prague',
+        'república checa': 'Europe/Prague',
+        'estocolmo': 'Europe/Stockholm',
+        'suecia': 'Europe/Stockholm',
+        'oslo': 'Europe/Oslo',
+        'noruega': 'Europe/Oslo',
+        'copenhague': 'Europe/Copenhagen',
+        'dinamarca': 'Europe/Copenhagen',
+        'dublín': 'Europe/Dublin',
+        'dublin': 'Europe/Dublin',
+        'irlanda': 'Europe/Dublin',
+        'roma': 'Europe/Rome',
+        'italia': 'Europe/Rome',
+        'milán': 'Europe/Rome',
+        'milan': 'Europe/Rome',
+        'venecia': 'Europe/Rome',
+        'atenas': 'Europe/Athens',
+        'grecia': 'Europe/Athens',
+        'estambul': 'Europe/Istanbul',
+        'turquía': 'Europe/Istanbul',
+        'turquia': 'Europe/Istanbul',
+        'moscú': 'Europe/Moscow',
+        'moscu': 'Europe/Moscow',
+        'rusia': 'Europe/Moscow',
+        'san petersburgo': 'Europe/Moscow',
+        'dubai': 'Asia/Dubai',
+        'emiratos árabes': 'Asia/Dubai',
+        'emiratos arabes': 'Asia/Dubai',
+        'uae': 'Asia/Dubai',
+        'estambul': 'Europe/Istanbul',
+        'bangkok': 'Asia/Bangkok',
+        'tailandia': 'Asia/Bangkok',
+        'singapur': 'Asia/Singapore',
+        'hong kong': 'Asia/Hong_Kong',
+        'tokio': 'Asia/Tokyo',
+        'tokyo': 'Asia/Tokyo',
+        'japón': 'Asia/Tokyo',
+        'japon': 'Asia/Tokyo',
+        'seúl': 'Asia/Seoul',
+        'seoul': 'Asia/Seoul',
+        'corea': 'Asia/Seoul',
+        'shangái': 'Asia/Shanghai',
+        'shanghai': 'Asia/Shanghai',
+        'pekín': 'Asia/Shanghai',
+        'pekin': 'Asia/Shanghai',
+        'china': 'Asia/Shanghai',
+        'mumbai': 'Asia/Kolkata',
+        'delhi': 'Asia/Kolkata',
+        'india': 'Asia/Kolkata',
+        'sídney': 'Australia/Sydney',
+        'sydney': 'Australia/Sydney',
+        'australia': 'Australia/Sydney',
+        'melbourne': 'Australia/Melbourne',
+        'auckland': 'Pacific/Auckland',
+        'nueva zelanda': 'Pacific/Auckland',
+        'nueva zelanda': 'Pacific/Auckland',
+        'doha': 'Asia/Qatar',
+        'qatar': 'Asia/Qatar',
+        'el cairo': 'Africa/Cairo',
+        'el cairo': 'Africa/Cairo',
+        'egipto': 'Africa/Cairo',
+        'johannesburgo': 'Africa/Johannesburg',
+        'sudáfrica': 'Africa/Johannesburg',
+        'sudafrica': 'Africa/Johannesburg',
+        'nairobi': 'Africa/Nairobi',
+        'kenia': 'Africa/Nairobi',
+        'lagos': 'Africa/Lagos',
+        'nigeria': 'Africa/Lagos',
+    }
+    
+    city_clean = city_name.lower().strip()
+    tz_name = city_timezones.get(city_clean)
+    
+    if not tz_name:
+        return None
+    
+    try:
+        # Obtener zona horaria
+        tz = pytz.timezone(tz_name)
+        now_utc = datetime.now(pytz.utc)
+        now_city = now_utc.astimezone(tz)
+        
+        hora = now_city.hour
+        minutos = now_city.minute
+        
+        # Detectar período del día
+        if 0 <= hora < 6:
+            periodo = "de la madrugada"
+            hora_display = 12 + hora if hora != 0 else 12
+        elif 6 <= hora < 12:
+            periodo = "de la mañana"
+            hora_display = hora
+        elif 12 <= hora < 18:
+            periodo = "de la tarde"
+            hora_display = hora - 12 if hora > 12 else 12
+        else:
+            periodo = "de la noche"
+            hora_display = hora - 12
+        
+        # Formato de minutos naturales
+        if minutos == 0:
+            minutos_text = "en punto"
+            hora_text = f"Son las {hora_display} {minutos_text}"
+        elif minutos == 15:
+            hora_text = f"Son las {hora_display} y cuarto"
+        elif minutos == 30:
+            hora_text = f"Son las {hora_display} y media"
+        elif minutos == 45:
+            hora_text = f"Son las {hora_display} menos cuarto"
+        else:
+            hora_text = f"Son las {hora_display} y {minutos}"
+        
+        city_display = city_name.title()
+        respuestas = [
+            f"En {city_display}, {hora_text} {periodo}.",
+            f"La hora en {city_display} es: {hora_text} {periodo}.",
+            f"En {city_display} actualmente son las {hora_display}:{minutos:02d} {periodo}.",
+            f"La hora exacta en {city_display}: {hora_text} {periodo}.",
+        ]
+        
+        return random.choice(respuestas)
+        
+    except Exception as e:
+        print(f"Error obteniendo hora en ciudad: {e}")
+        return None
     """Obtener ubicación del usuario usando su IP"""
     try:
         # Usar un servicio de geolocalización por IP
@@ -562,18 +1138,52 @@ def get_user_location():
     }
 
 def calculate_expression(expr):
-    """Calculadora mejorada con validación"""
+    """Calculadora mejorada con detección de múltiples variaciones"""
     try:
         # Limpiar expresión
         expr = expr.strip()
         
+        # Convertir palabras comunes a operadores
+        replacements = {
+            ' mas ': '+',
+            ' más ': '+',
+            ' menos ': '-',
+            ' por ': '*',
+            ' entre ': '/',
+            ' multiplicado ': '*',
+            ' dividido ': '/',
+            'x': '*',
+            '÷': '/',
+            'raiz': 'sqrt',
+            'raíz': 'sqrt',
+            'elevado': '**',
+            'potencia': '**',
+            ' al cuadrado': '**2',
+            ' a la dos': '**2',
+            ' al cubo': '**3',
+            ' a la tres': '**3',
+        }
+        
+        expr_mod = expr.lower()
+        for palabra, operador in replacements.items():
+            expr_mod = expr_mod.replace(palabra, operador)
+        
         # Validar caracteres permitidos
-        allowed = set("0123456789+-*/(). ")
-        if not all(c in allowed for c in expr):
+        allowed = set("0123456789+-*/().,sqrt** ")
+        if not all(c in allowed for c in expr_mod):
             return None
         
+        # Añadir funciones seguras
+        safe_dict = {
+            "__builtins__": {},
+            "sqrt": lambda x: x ** 0.5,
+            "pow": pow,
+            "abs": abs,
+            "round": round,
+        }
+        
         # Evaluar de forma segura
-        result = eval(expr, {"__builtins__": {}}, {})
+        result = eval(expr_mod, safe_dict, {})
         return result
     except:
         return None
@@ -638,69 +1248,162 @@ def process_command(command):
     
     # === IDENTIDAD ===
     elif intent == "identidad":
-        response = "Soy Baro, tu asistente de voz inteligente, similar a Alexa. Puedo ayudarte con información, clima, noticias, cálculos, búsquedas en internet, reproducir música, contar chistes y mucho más. Tengo capacidad de aprender cosas nuevas que me enseñes. ¿En qué puedo ayudarte?"
+        respuestas_identidad = [
+            "Soy Baro, un asistente de voz inteligente creado y entrenado por Zenvio y Atenis, plataformas desarrolladas por Darel Vega, el CEO actual de Baro. Puedo ayudarte con información, clima, noticias, cálculos, búsquedas en internet, reproducir música, contar chistes y mucho más.",
+            "Mi nombre es Baro. Fui entrenado y creado usando algoritmos de Zenvio y Atenis, tecnologías desarrolladas por Darel Vega, CEO de Baro. Puedo asistirte con una gran variedad de tareas: búsquedas, clima, cálculos, noticias, música, chistes y más.",
+            "Soy Baro, tu asistente inteligente. Fui desarrollado usando las plataformas Zenvio y Atenis, creadas por Darel Vega, CEO de Baro. Mi capacidad incluye búsqueda de información, análisis de clima, matemáticas, noticias, entretenimiento y aprendizaje de información nueva.",
+            "Soy Baro, asistente de voz inteligente. Mi desarrollo se basa en los algoritmos de Zenvio y Atenis, tecnologías innovadoras de Darel Vega, CEO de Baro. Puedo ayudarte en múltiples áreas: información, clima, cálculos, búsquedas, música, chistes y más.",
+        ]
+        response = random.choice(respuestas_identidad)
     
     # === HORA Y FECHA ===
-    elif intent == "hora" or "hora" in command or "qué hora" in command:
-        now = datetime.datetime.now()
-        hora_12 = now.strftime('%I:%M %p')
-        hora_24 = now.strftime('%H:%M')
-        response = f"Son las {hora_24} ({hora_12})."
+    # Hora: CON CONTEXTO DE TIEMPO DEL DÍA
+    if intent == "hora":
+        # Verificar si es una pregunta de hora en una ciudad específica
+        city_match = None
+        if ' en ' in command_norm:
+            # Extraer ciudad después de "en"
+            parts = command_norm.split(' en ')
+            if len(parts) > 1:
+                city_name = parts[-1].strip().rstrip('?.,!')
+                if city_name and len(city_name) > 2:
+                    city_time = get_time_in_city(city_name)
+                    if city_time:
+                        response = city_time
+                    else:
+                        # Si no se encuentra la ciudad, mostrar hora local
+                        response = f"No encuentro '{city_name}' en mi base de datos de zonas horarias. Intenta con otra ciudad."
+                else:
+                    city_time = None
+            else:
+                city_time = None
+        
+        # Si no se detectó una ciudad o no se encontró, mostrar hora local
+        if ' en ' not in command_norm or not city_match:
+            now = datetime.datetime.now()
+            hora = now.hour
+            minutos = now.minute
+            
+            # Detectar período del día
+            if 0 <= hora < 6:
+                periodo = "de la madrugada"
+                hora_display = 12 + hora if hora != 0 else 12  # Convertir a 12h
+            elif 6 <= hora < 12:
+                periodo = "de la mañana"
+                hora_display = hora
+            elif 12 <= hora < 18:
+                periodo = "de la tarde"
+                hora_display = hora - 12 if hora > 12 else 12
+            else:  # 18 a 23
+                periodo = "de la noche"
+                hora_display = hora - 12
+            
+            # Formato de minutos naturales
+            if minutos == 0:
+                minutos_text = "en punto"
+                hora_text = f"Son las {hora_display} {minutos_text}"
+            elif minutos == 15:
+                hora_text = f"Son las {hora_display} y cuarto"
+            elif minutos == 30:
+                hora_text = f"Son las {hora_display} y media"
+            elif minutos == 45:
+                hora_text = f"Son las {hora_display} menos cuarto"
+            else:
+                hora_text = f"Son las {hora_display} y {minutos}"
+            
+            # Respuestas naturales y formuladas con contexto
+            respuestas_hora = [
+                f"{hora_text} {periodo}.",
+                f"La hora actual es: {hora_text} {periodo}.",
+                f"Actualmente son las {hora_display} y {minutos} {periodo}.",
+                f"Tienes marcadas las {hora_display} con {minutos} minutos {periodo}.",
+                f"Mira, son las {hora_display}:{minutos:02d} {periodo}.",
+                f"Es {hora_text} {periodo}. Precisamente.",
+                f"En este momento, {hora_text} {periodo}.",
+            ]
+            response = random.choice(respuestas_hora)
     
-    elif intent == "fecha" or "fecha" in command or "qué día" in command or ("día" in command and "hoy" in command):
+    # Fecha: CON CONTEXTO Y FORMATEO NATURAL
+    elif intent == "fecha":
         now = datetime.datetime.now()
         dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         dia_semana = dias[now.weekday()]
         mes = meses[now.month - 1]
-        response = f"Hoy es {dia_semana}, {now.day} de {mes} de {now.year}."
+        
+        # Respuestas más naturales y detalladas
+        respuestas_fecha = [
+            f"Hoy es {dia_semana}. {now.day} de {mes} de {now.year}.",
+            f"La fecha de hoy es: {now.day} de {mes} de {now.year}. Y es {dia_semana}.",
+            f"Estamos en {dia_semana}. {now.day} del mes de {mes}. Del año {now.year}.",
+            f"Es {dia_semana}, {now.day} del {mes}.",
+            f"Hoy es {dia_semana} {now.day} de {mes}. Del año {now.year}.",
+            f"La fecha exacta es: {dia_semana} {now.day} de {mes} de {now.year}.",
+            f"Actualmente: {dia_semana}, {now.day} de {mes}.",
+            f"Tenemos {dia_semana}, {now.day} de {mes} de {now.year}.",
+        ]
+        response = random.choice(respuestas_fecha)
     
     # === CLIMA ===
     elif intent == "clima":
         location = nlp.extract_query(command, "clima")
-        if not location or location in ["hoy", "ahora", "actual"]:
+        if not location or location in ["hoy", "ahora", "actual", "clima", "tiempo", "el", "la", ""]:
             location = "La Habana"
         response = get_weather(location)
     
     # === BÚSQUEDAS EN INTERNET ===
     elif intent == "buscar":
         query = nlp.extract_query(command, "buscar")
-        if query:
-            webbrowser.open(f"https://www.google.com/search?q={query}")
-            response = f"Abriendo Google para buscar '{query}'."
+        if query and len(query.strip()) > 0:
+            local_result, local_score = search_knowledge(query, threshold=0.5)
+            if local_result and local_score > 0.6:
+                response = local_result
+            else:
+                wiki_result = search_wikipedia(query)
+                response = wiki_result
         else:
-            response = "¿Qué quieres que busque en internet?"
+            response = "¿Qué quieres que busque? Por ejemplo: 'Baro busca información sobre la salsa'."
     
     # === YOUTUBE ===
     elif intent == "youtube":
         query = nlp.extract_query(command, "youtube")
-        if query:
-            url = f"https://www.youtube.com/results?search_query={query}"
-            webbrowser.open(url)
-            response = f"Abriendo YouTube para buscar '{query}'."
+        if query and len(query.strip()) > 0:
+            local_result, local_score = search_knowledge(query, threshold=0.4)
+            if local_result and local_score > 0.5:
+                response = f"Sobre {query}: {local_result}"
+            else:
+                wiki_result = search_wikipedia(query)
+                response = f"Encontré información: {wiki_result}"
         else:
-            webbrowser.open("https://www.youtube.com")
-            response = "Abriendo YouTube."
+            response = "¿Qué música, artista o canción quieres que busque? Por ejemplo: 'Baro busca música de la salsa'."
     
-    # === NAVEGADOR ===
+    # === NAVEGADOR - NO SOPORTADO ===
     elif "navegador" in command or "chrome" in command or "browser" in command:
-        webbrowser.open("https://www.google.com")
-        response = "Abriendo el navegador web."
+        response = "No puedo abrir navegadores. Soy un asistente completo que funciona internamente. Puedo buscar información, obtener noticias, clima y mucho más. ¿En qué puedo ayudarte?"
     
     # === CALCULADORA ===
     elif intent == "calculadora":
         query = nlp.extract_query(command, "calculadora")
-        result = calculate_expression(query)
-        if result is not None:
-            response = f"El resultado de {query} es {result}."
+        if query and len(query.strip()) > 0:
+            result = calculate_expression(query)
+            if result is not None:
+                # Formato de respuesta mejorado con pausas
+                if isinstance(result, float):
+                    result = round(result, 4)
+                respuestas_calculo = [
+                    f"El resultado de {query} es: {result}.",
+                    f"{query} es igual a: {result}.",
+                    f"Eso da como resultado: {result}.",
+                    f"La respuesta es: {result}.",
+                    f"Según mis cálculos. {query} da {result}.",
+                    f"El operación {query} resulta en: {result}.",
+                ]
+                response = random.choice(respuestas_calculo)
+            else:
+                response = f"No pude calcular eso. Puedes decir cosas como: veinte más cinco, diez por tres, cuarenta entre dos, cinco al cuadrado, raíz de dieciséis. O usar números directamente: Baro calcula 25 * 8"
         else:
-            try:
-                subprocess.run(['gnome-calculator'], timeout=1)
-                response = "Abriendo la calculadora."
-            except:
-                webbrowser.open("https://www.google.com/search?q=calculadora")
-                response = "Abriendo calculadora web."
+            response = "¿Qué necesitas calcular? Por ejemplo: 'Baro calcula 25 más 15', 'cuánto es 100 por 2', 'raíz de 64'."
     
     # === CHISTES ===
     elif intent == "chiste":
@@ -719,7 +1422,12 @@ def process_command(command):
             "¿Por qué la escoba está feliz? Porque se barre de la risa.",
             "¿Cómo se despiden los químicos? Ácido un placer.",
             "¿Qué hace un perro con un taladro? Taladrando.",
-            "¿Cuál es el café más peligroso del mundo? El ex-preso."
+            "¿Cuál es el café más peligroso del mundo? El ex-preso.",
+            "¿Qué le dice un pescado a otro? ¿Qué onda?",
+            "¿Qué hace un techo en un banco? Banco.",
+            "¿Por qué el pastel entró a la escuela? Para enriquecer su vida intelectual.",
+            "¿Qué le dice un perro astronauta a otro? ¡Arf Arf! (significa 'Arf-onauta')",
+            "¿Por qué los esqueletos no pelean? Porque no tienen agallas."
         ]
         response = random.choice(jokes)
     
@@ -735,21 +1443,112 @@ def process_command(command):
         response = get_news(source)
     
     # === UBICACIÓN DEL USUARIO ===
-    elif any(phrase in command for phrase in ["dónde estoy", "donde estoy", "mi ubicación", "mi ubicacion", "mi localización", "localización actual"]):
+    elif intent == "ubicación" and any(phrase in command for phrase in ["dónde estoy", "donde estoy", "mi ubicación", "mi ubicacion", "mi localización", "localización actual", "mi posición", "donde me encuentro"]):
         location_data = get_user_location()
-        response = f"Según mi información, estás en {location_data['full_location']}. Tu zona horaria es {location_data['timezone']}."
+        respuestas_ubicacion = [
+            f"Según mi información, estás en {location_data['full_location']}. Tu zona horaria es {location_data['timezone']}.",
+            f"Tu ubicación es {location_data['full_location']} (zona horaria: {location_data['timezone']}).",
+            f"Estás en {location_data['full_location']}, horario {location_data['timezone']}.",
+            f"Parece que estás en {location_data['full_location']}.",
+        ]
+        response = random.choice(respuestas_ubicacion)
     
     # === BÚSQUEDA DE UBICACIONES ===
-    elif intent == "ubicacion" or any(phrase in command for phrase in ["dónde queda", "dónde está", "ubicación de", "cómo llegar"]):
+    elif intent == "ubicación":
         query = nlp.extract_query(command, "ubicacion")
-        if query:
+        if query and len(query.strip()) > 0:
             response = get_location(query)
         else:
-            response = "¿Qué ubicación quieres buscar? Por ejemplo: 'dónde queda el museo del Prado'."
+            response = "¿Qué ubicación quieres buscar? Por ejemplo: 'dónde queda el museo del Prado' o 'dónde está La Habana'."
     
     # === TRADUCCIÓN ===
     elif intent == "traducir":
-        response = "La función de traducción estará disponible pronto. Por ahora puedes usar Google Translate en tu navegador."
+        # Extraer palabras clave para idioma
+        query = nlp.extract_query(command, "traducir").lower()
+        
+        # Detectar idioma y texto a traducir
+        idiomas = {
+            'en ': ('inglés', 'en'),
+            'al ingles': ('inglés', 'en'),
+            'en inglés': ('inglés', 'en'),
+            'en ingles': ('inglés', 'en'),
+            'al francés': ('francés', 'fr'),
+            'al frances': ('francés', 'fr'),
+            'en francés': ('francés', 'fr'),
+            'en frances': ('francés', 'fr'),
+            'al alemán': ('alemán', 'de'),
+            'al aleman': ('alemán', 'de'),
+            'en alemán': ('alemán', 'de'),
+            'en aleman': ('alemán', 'de'),
+            'al italiano': ('italiano', 'it'),
+            'en italiano': ('italiano', 'it'),
+            'al portugués': ('portugués', 'pt'),
+            'al portugues': ('portugués', 'pt'),
+            'en portugués': ('portugués', 'pt'),
+            'en portugues': ('portugués', 'pt'),
+            'al chino': ('chino', 'zh'),
+            'en chino': ('chino', 'zh'),
+            'al japonés': ('japonés', 'ja'),
+            'al japones': ('japonés', 'ja'),
+            'en japonés': ('japonés', 'ja'),
+            'en japones': ('japonés', 'ja'),
+            'al ruso': ('ruso', 'ru'),
+            'en ruso': ('ruso', 'ru'),
+            'al árabe': ('árabe', 'ar'),
+            'al arabe': ('árabe', 'ar'),
+            'en árabe': ('árabe', 'ar'),
+            'en arabe': ('árabe', 'ar'),
+            'al coreano': ('coreano', 'ko'),
+            'en coreano': ('coreano', 'ko'),
+            'al tailandés': ('tailandés', 'th'),
+            'al tailandes': ('tailandés', 'th'),
+            'en tailandés': ('tailandés', 'th'),
+            'en tailandes': ('tailandés', 'th'),
+            'al vietnamita': ('vietnamita', 'vi'),
+            'en vietnamita': ('vietnamita', 'vi'),
+            'al holandés': ('holandés', 'nl'),
+            'al holandes': ('holandés', 'nl'),
+            'en holandés': ('holandés', 'nl'),
+            'en holandes': ('holandés', 'nl'),
+            'al sueco': ('sueco', 'sv'),
+            'en sueco': ('sueco', 'sv'),
+            'al noruego': ('noruego', 'no'),
+            'en noruego': ('noruego', 'no'),
+            'al danés': ('danés', 'da'),
+            'al danes': ('danés', 'da'),
+            'en danés': ('danés', 'da'),
+            'en danes': ('danés', 'da'),
+            'al griego': ('griego', 'el'),
+            'en griego': ('griego', 'el'),
+            'al turco': ('turco', 'tr'),
+            'en turco': ('turco', 'tr'),
+            'al hindi': ('hindi', 'hi'),
+            'en hindi': ('hindi', 'hi'),
+            'al bengalí': ('bengalí', 'bn'),
+            'al bengali': ('bengalí', 'bn'),
+            'en bengalí': ('bengalí', 'bn'),
+            'en bengali': ('bengalí', 'bn'),
+        }
+        
+        # Buscar el idioma en el comando
+        target_lang = None
+        target_code = None
+        text_to_translate = command.lower()
+        
+        for idioma_key, (idioma_name, idioma_code) in idiomas.items():
+            if idioma_key in command_norm:
+                target_lang = idioma_name
+                target_code = idioma_code
+                # Extraer texto a traducir (lo que viene antes de la palabra del idioma)
+                parts = command_norm.split(idioma_key)
+                if len(parts) > 0:
+                    text_to_translate = parts[0].replace('traduce', '').replace('traduceme', '').replace('en ', '').replace('cómo digo', '').replace('como digo', '').replace('qué es', '').replace('que es', '').strip()
+                break
+        
+        if target_lang and text_to_translate and len(text_to_translate) > 0:
+            response, _ = translate_text(text_to_translate, target_lang)
+        else:
+            response = "Para traducir, di: 'Baro traduce [palabra] al [idioma]'. Por ejemplo: 'Baro traduce hola al inglés' o 'Baro cómo digo casa en francés'."
     
     # === PREGUNTAS DE CONOCIMIENTO ===
     elif any(command.startswith(qw) for qw in nlp.question_words):
@@ -986,18 +1785,8 @@ def index():
         }
 
         function playBeep() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 800;
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.15);
+            // Beep deshabilitado - sonido omitido
+            return;
         }
 
         recordButton.onclick = async () => {
